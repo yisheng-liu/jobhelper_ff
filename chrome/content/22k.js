@@ -38,20 +38,20 @@ function salaryDataMap(whenGet) {
       for(var idx = 0; idx < jobs.length; idx++) {
         var job = jobs[idx];
         var tmp = {};
-        tmp.companyName = $("company_name", job).text(); 
-        tmp.jobName = $("job_name", job).text();
-        tmp.salary = $("salary", job).text(); 
-        tmp.notes = [];
+        tmp.companyName = job.getElementsByTagName("company_name").innerHTML;
+        tmp.jobName = job.getElementsByTagName("job_name").innerHTML;
+        tmp.salary = job.getElementsByTagName("salary").innerHTML;
+        tmp.note = "";
         var i = 1;
         while(true) { // note 可能有多個
-          var note = $("note"+i, job).text();
+          var note = job.getElementsByTagName("note"+i).innerHTML;
           i++;
           if(note.length != 1) {
             break ;
           }
-          tmp.notes.push(note.value);
+          tmp.note += note.text() + " ";
         }
-        tmp.screenShot = $("job_url_screenshot", job).text();
+        tmp.screenShot = getElementsByTagName("job_url_screenshot").innerHTML;
         
         data.push(tmp);
       }
