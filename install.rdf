@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<RDF xmlns="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:em="http://www.mozilla.org/2004/em-rdf#">
+
+	<Description about="urn:mozilla:install-manifest">
+		<em:id>y78427@gmail.com</em:id>
+		<em:name>Job Helper</em:name>
+		<em:version>1.0</em:version>
+		<em:type>2</em:type>
+		<em:creator>Yi-Sheng Liu</em:creator>
+		<em:description>Report the bad records of the company</em:description>
+		<em:homepageURL>http://www.cs.ccu.edu.tw/~lys100m/jobhelper/</em:homepageURL>
+
+		<em:targetApplication>
+			<Description>
+				<em:id>{ec8030f7-c20a-464f-9b0e-13a3a9e97384}</em:id>
+				<em:minVersion>3.0</em:minVersion>
+				<em:maxVersion>20.0</em:maxVersion>
+			</Description>
+		</em:targetApplication>
+	</Description>      
+</RDF>
