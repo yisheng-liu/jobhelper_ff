@@ -13,15 +13,14 @@ function salaryDataMap(whenGet) {
     return ;
   }
 
-  // session storage api
-  var ss = Components.classes["@mozilla.org/browser/sessionstore;1"].getService(Components.interfaces.nsISessionStore);
-
-  var ret = ss.getTabValue(gBrowser.selectedTab, "22kData");
-  ret = ret.length != 0 ? JSON.parse(ret) : ret;
+  // 用localStorage儲存資料
+  var storage = content.window.localStorage;
+  var ret = storage.getItem("22kData");
+  if(ret) {ret = JSON.parse(ret)}
 
   // 檢查本地端是否有資料, 有的話檢查下載資料的時間是否在一週以內
   // 如果上述檢查沒通過就重新下載資料, 通過的話就進行 whenGet
-  if(ret.length == 0 || !ret.fetchTime || ret.fetchTime + 604800*1000 < new Date()) {
+  if(!ret || !ret.fetchTime || ret.fetchTime + 604800*1000 < new Date().getTime()) {
     updateData(whenGet);
   }
   else {
@@ -30,36 +29,40 @@ function salaryDataMap(whenGet) {
   
   // 從22k網站下載資料並且儲存起來, 如果成功就進行 whenGet
   function updateData(whenGet) {
-    $.get("http://www.22kopendata.org/api/list_data/20/", function(ret) {
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", "http://www.22kopendata.org/api/list_data/20/");
+    xhr.onreadystatechange = function() {
+      if(xhr.readyState === 4 && xhr.status === 200) {
+        callback(xhr.responseText);
+      }
+    };
+    xhr.send();
+    
+    function callback(responseXML) {
       var data = [];
-      var xmlDoc = (new DOMParser()).parseFromString(ret, "text/xml");
-
+      var xmlDoc = (new DOMParser()).parseFromString(responseXML, "text/xml");
       var jobs = xmlDoc.getElementsByTagName("job");
+      
       for(var idx = 0; idx < jobs.length; idx++) {
         var job = jobs[idx];
         var tmp = {};
-        tmp.companyName = job.getElementsByTagName("company_name").innerHTML;
-        tmp.jobName = job.getElementsByTagName("job_name").innerHTML;
-        tmp.salary = job.getElementsByTagName("salary").innerHTML;
+        tmp.companyName = job.getElementsByTagName("company_name")[0].textContent;
+        tmp.jobName = job.getElementsByTagName("job_name")[0].textContent;
+        tmp.salary = job.getElementsByTagName("salary")[0].textContent;
         tmp.note = "";
-        var i = 1;
-        while(true) { // note 可能有多個
-          var note = job.getElementsByTagName("note"+i).innerHTML;
-          i++;
-          if(note.length != 1) {
-            break ;
-          }
-          tmp.note += note.text() + " ";
-        }
-        tmp.screenShot = getElementsByTagName("job_url_screenshot").innerHTML;
+        // note 最多有兩個
+        var note1 = job.getElementsByTagName("note1")[0];
+        var note2 = job.getElementsByTagName("note2")[0];
+        if(note1) {tmp.note += note1.textContent};
+        if(note2) {tmp.note += note2.textContent};
+        tmp.screenShot = job.getElementsByTagName("job_url_screenshot")[0].textContent;
         
         data.push(tmp);
       }
       
-      var ss = Components.classes["@mozilla.org/browser/sessionstore;1"].getService(Components.interfaces.nsISessionStore);
-      ss.setTabValue(gBrowser.selectedTab, "22kData", JSON.stringify({fetchTime: new Date(), data: data}));
-      
+      storage.setItem("22kData", JSON.stringify({fetchTime: new Date().getTime(), data: data}));
+
       whenGet(data);
-    });
+    }
   }
 }

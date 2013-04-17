@@ -13,48 +13,42 @@ var get_company_info = function(){
   params.link = doc.location.href;
 
   if ('www.104.com.tw' == doc.location.hostname) {
-	  // 有 jQuery 可以用
-	  var company_dom = jQuery('#comp_header li.comp_name p a', doc);
-	  if (company_dom.length != 0) {
-	    params.from = '104';
-	    params.name = company_dom.eq(0).text();
-	    params.company_link = company_dom.eq(0).attr('href');
-	    return params;
-	  }
+    var name;
 
-	  company_dom = jQuery('#comp_header li.comp_name h1', doc);
-	  if (company_dom.length != 0) {
-	    params.from = '104';
-	    params.name = company_dom.text();
-	    params.company_link = doc.location;
-	    return params;
-	  }
-	
-	  return;
+    try {
+      name = doc.getElementById("comp_header").getElementsByClassName("comp_name")[0].getElementsByTagName("h1")[0].textContent.trim();
+    }
+    catch(err) {
+      return;
+    }
+    
+    params.from = '104';
+    params.name = name;
+    params.company_link = doc.location;
   }
   else if ('www.104temp.com.tw' == doc.location.hostname) {
     // 檢查所有 a dom, 如果 company_intro.jsp 開頭的不超過兩個不一樣的，就確定是這家公司了
-    var a_doms = $('a', doc);
+    var a_doms = doc.getElementsByTagName("a");
     var a_dom;
-    for (var i = 0; i < a_doms.length; i ++) {
-	    a_dom = a_doms.eq(i);
-	    if (!a_dom.attr('href') || !a_dom.attr('href').match(/^company_intro\.jsp/)) {
+    
+    for (var i = 0; i < a_doms.length; i++) {
+	    a_dom = a_doms[i];
+      if (!a_dom.getAttribute("href") || !a_dom.getAttribute("href").match(/^company_intro\.jsp/)) {
 		    continue;
 	    }
-	    if (params.company_link && params.company_link != a_dom.attr('href')) {
+	    if (params.company_link && params.company_link != a_dom.getAttribute("href")) {
 		    // 有兩家不一樣的公司，跳過
 		    return;
 	    }
-	    params.company_link = a_dom.attr('href');
-	    params.name = a_dom.text();
+
+	    params.company_link = a_dom.getAttribute('href');
+      params.name = a_dom.textContent;
 	    params.from = '104temp';
 	  }
-
-	  return params;
   }
   else if ('www.yes123.com.tw' == content.document.location.hostname) {
     try {
-      var name = doc.getElementsByClassName("comp_name")[0].innerHTML.trim();
+      var name = doc.getElementsByClassName("comp_name")[0].textContent.trim();
     }
     catch(err) {
       return ;
@@ -69,7 +63,7 @@ var get_company_info = function(){
   }
   else if ('www.1111.com.tw' == content.document.location.hostname) {
     try {
-      var name = doc.getElementById("hd").getElementsByTagName("h1")[0].innerHTML;
+      var name = doc.getElementById("hd").getElementsByTagName("h1")[0].textContent;
     }
     catch(err) {
       return ;
@@ -84,11 +78,11 @@ var get_company_info = function(){
   }
   else if ('www.518.com.tw' == content.document.location.hostname) {
     try { // 這邊是處理職務介紹的頁面
-      var name = doc.getElementsByClassName("company-info")[0].getElementsByTagName("a")[0].innerHTML.trim();
+      var name = doc.getElementsByClassName("company-info")[0].getElementsByTagName("a")[0].textContent.trim();
     }
     catch(err) { // 這邊是處理公司介紹的頁面
       try {
-        name = doc.getElementById("company-title").getElementsByTagName("strong")[1].innerHTML.trim();
+        name = doc.getElementById("company-title").getElementsByTagName("strong")[1].textContent.trim();
       }
       catch(err) {
         return ;
@@ -101,8 +95,8 @@ var get_company_info = function(){
 
     params.from = '518';
     params.name = name;
-  } else 
-  {
+  } 
+  else {
     return;
   }
 
@@ -116,12 +110,12 @@ function main() {
   if(!companyInfo) { // 不是目標網站就什麼事也不做
     return;
   }
-  
+
   // 處理22K網站的資料
   // 給一個函式當做參數, 函式的參數(data)是所有22K的資料(格式請參考22k.js)
   // 當資料(data)取得成功時一一比對是否與這個頁面的公司名稱相同, 相同的話將所有相關的資料顯示出來
+  try{
   salaryDataMap(function(data) {
-
     data.forEach(function(item){
       if(companyInfo.name.indexOf(item.companyName) >= 0) {
         // 收集"特殊要求"
@@ -129,7 +123,9 @@ function main() {
       }
     })
   });
+  }catch(err){alert(err)}
   
+  try{
   // 處理 jobhelper 網站上的資料
   jobHelperDataMap(function(data) {
     data.forEach(function(item) {
@@ -138,6 +134,7 @@ function main() {
       }
     });
   });
+  }catch(err){alert(err)}
   
   // 將違規資訊加入 myAlertDiv 裡頭
   function appendAlertMsg(msg, link) {
@@ -169,7 +166,7 @@ function main() {
       }
       
       var elt = document.createElement("div");
-      elt.innerHTML = msg;
+      elt.appendChild(document.createTextNode(msg));
       elt.style.color = "WHITE";
       elt.style.cursor = "pointer";
       elt.addEventListener("click", function(e){window.open(link)}, false);
