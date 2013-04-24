@@ -113,6 +113,34 @@ function main() {
     return;
   }
   
+  // 在頁面加上警告的資訊
+  (function() {
+    var div = doc.getElementById("myAlertDiv"), 
+        style = null,
+        closeDiv = null;
+    
+    div = document.createElement("div");
+    div.id = "myAlertDiv";
+    
+    style = div.style;
+    style.background = "#cc103f";
+    style.bottom = "10px";
+    style.fontSize = "14.5px";
+    style.position = "fixed";
+    style.zIndex = "999";
+    
+    closeDiv = document.createElement("div");
+    closeDiv.setAttribute("id", "closeDiv");
+    closeDiv.innerHTML = "關閉訊息 [目前沒有不良紀錄]";
+    closeDiv.style.border = "#0000FF 5px groove";
+    closeDiv.style.color = "WHITE";
+    closeDiv.style.cursor = "pointer";
+    closeDiv.addEventListener("click", function(e){e.target.parentNode.style.display="none";});
+    
+    div.appendChild(closeDiv);
+    doc.body.appendChild(div);
+  }());
+  
   // 處理22K網站的資料
   // 給一個函式當做參數, 函式的參數(data)是所有22K的資料(格式請參考22k.js)
   // 當資料(data)取得成功時一一比對是否與這個頁面的公司名稱相同, 相同的話將所有相關的資料顯示出來
@@ -136,44 +164,43 @@ function main() {
     });
   });
   
-  // 將違規資訊加入 myAlertDiv 裡頭
+  // 將違規資訊加入 myAlertDiv 裡頭 (這邊使用了 lazy function definition pattern)
   function appendAlertMsg(msg, link) {
-    if(msg && link) {
+    firstCall();
+    
+    // 第一次新增警告訊息時先修改 closeDiv 裡頭的說明
+    function firstCall() {
       var div = doc.getElementById("myAlertDiv"), 
           style = null,
           elt = null;
-
-      if(!div) {
-        var closeDiv = null;
-        
-        div = document.createElement("div");
-        div.id = "myAlertDiv";
-        
-        style = div.style;
-        style.background = "#cc103f";
-        style.bottom = "10px";
-        style.fontSize = "14.5px";
-        style.position = "fixed";
-        style.zIndex = "999";
-        
-        closeDiv = document.createElement("div");
-        closeDiv.innerHTML = "關閉訊息[請務必注意'網頁上的公司名稱'與'警告訊息的公司名稱'是否相符]";
-        closeDiv.style.border = "#0000FF 5px groove";
-        closeDiv.style.color = "WHITE";
-        closeDiv.style.cursor = "pointer";
-        closeDiv.addEventListener("click", function(e){e.target.parentNode.style.display="none";});
-        
-        div.appendChild(closeDiv);
-        doc.body.appendChild(div);
-      }
-      
-      elt = document.createElement("p");
-      elt.appendChild(document.createTextNode(msg));
+          
+      div.removeChild(doc.getElementById("closeDiv"));
+      elt = document.createElement("div");
+      elt.setAttribute("id", "closeDiv");
+      elt.innerHTML = "關閉訊息 [請務必注意'網頁上的公司名稱'與'警告訊息中的公司名稱'是否相符]";
+      elt.style.border = "#0000FF 5px groove";
       elt.style.color = "WHITE";
       elt.style.cursor = "pointer";
-      elt.addEventListener("click", function(e){window.open(link);}, false);
-      
-      div.appendChild(elt);
+      elt.addEventListener("click", function(e){e.target.parentNode.style.display="none";});
+      div.appendChild(elt); 
+      // 重新宣告 appendAlertMsg 的定義
+      appendAlertMsg = function(msg, link) {
+        var div = doc.getElementById("myAlertDiv"), 
+            style = null,
+            elt = null;
+          
+        if(msg && link) {
+          elt = document.createElement("p");
+          elt.appendChild(document.createTextNode(msg));
+          elt.style.color = "WHITE";
+          elt.style.cursor = "pointer";
+          elt.addEventListener("click", function(e){window.open(link);}, false);
+          
+          div.appendChild(elt);
+        }
+      };
+      // 將這次呼叫的參數拿來呼叫重新宣告後的 appendAlertMsg
+      appendAlertMsg(msg, link);
     }
   }
 }
