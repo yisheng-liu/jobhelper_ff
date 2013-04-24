@@ -16,7 +16,9 @@ function salaryDataMap(whenGet) {
   // 用localStorage儲存資料
   var storage = content.window.localStorage;
   var ret = storage.getItem("22kData");
-  if(ret) {ret = JSON.parse(ret)}
+  if(ret) {
+    ret = JSON.parse(ret);
+  }
 
   // 檢查本地端是否有資料, 有的話檢查下載資料的時間是否在一週以內
   // 如果上述檢查沒通過就重新下載資料, 通過的話就進行 whenGet
@@ -53,8 +55,12 @@ function salaryDataMap(whenGet) {
         // note 最多有兩個
         var note1 = job.getElementsByTagName("note1")[0];
         var note2 = job.getElementsByTagName("note2")[0];
-        if(note1) {tmp.note += note1.textContent};
-        if(note2) {tmp.note += note2.textContent};
+        if(note1) {
+          tmp.note += note1.textContent;
+        }
+        if(note2) {
+          tmp.note += note2.textContent;
+        }
         tmp.screenShot = job.getElementsByTagName("job_url_screenshot")[0].textContent;
         
         data.push(tmp);

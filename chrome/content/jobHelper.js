@@ -7,29 +7,34 @@
          專案程式碼是從"http://robertnyman.com/2009/01/24/how-to-develop-a-firefox-extension/"裏頭的範例修改來的
  */
 // to get the company info if any
-var get_company_info = function(){
-  var params = {};
-  var doc = content.document;
-  params.link = doc.location.href;
+function get_company_info() {
+  var params = {},
+      doc = content.document,
+      name = null,
+      hostname = doc.location.hostname;
 
-  if ('www.104.com.tw' == doc.location.hostname) {
-    var name;
-
+  if ('www.104.com.tw' === hostname) {
+    // 先找大標題
     try {
-      name = doc.getElementById("comp_header").getElementsByClassName("comp_name")[0].getElementsByTagName("h1")[0].textContent.trim();
+      name = doc.getElementById("comp_header").getElementsByClassName("comp_name")[0].getElementsByTagName("a")[1].textContent.trim();
     }
     catch(err) {
-      return;
+      // 大標題沒有, 換找小標題
+      try {
+        name = doc.getElementById("comp_header").getElementsByClassName("comp_name")[0].getElementsByTagName("h1")[0].textContent.trim();
+      }
+      catch(err) {
+        return null;
+      }
     }
     
     params.from = '104';
-    params.name = name;
     params.company_link = doc.location;
   }
-  else if ('www.104temp.com.tw' == doc.location.hostname) {
+  else if ('www.104temp.com.tw' === hostname) {
     // 檢查所有 a dom, 如果 company_intro.jsp 開頭的不超過兩個不一樣的，就確定是這家公司了
-    var a_doms = doc.getElementsByTagName("a");
-    var a_dom;
+    var a_doms = doc.getElementsByTagName("a"),
+        a_dom = null;
     
     for (var i = 0; i < a_doms.length; i++) {
 	    a_dom = a_doms[i];
@@ -38,138 +43,135 @@ var get_company_info = function(){
 	    }
 	    if (params.company_link && params.company_link != a_dom.getAttribute("href")) {
 		    // 有兩家不一樣的公司，跳過
-		    return;
+		    return null;
 	    }
 
 	    params.company_link = a_dom.getAttribute('href');
-      params.name = a_dom.textContent;
 	    params.from = '104temp';
 	  }
   }
-  else if ('www.yes123.com.tw' == content.document.location.hostname) {
+  else if("www.ejob.gov.tw" === hostname) {
     try {
-      var name = doc.getElementsByClassName("comp_name")[0].textContent.trim();
+      name = doc.getElementById("ctl00_ContentPlaceHolder1_lblCompName").textContent.trim();
     }
     catch(err) {
-      return ;
+      return null;
     }
     
-    if (!name) {
-      return;
+    params.from = 'ejob';
+  }
+  else if ('www.yes123.com.tw' === hostname) {
+    try {
+      name = doc.getElementsByClassName("comp_name")[0].textContent.trim();
+    }
+    catch(err) {
+      return null;
     }
 
     params.from = 'yes123';
-    params.name = name;
   }
-  else if ('www.1111.com.tw' == content.document.location.hostname) {
+  else if ('www.1111.com.tw' === hostname) {
     try {
-      var name = doc.getElementById("hd").getElementsByTagName("h1")[0].textContent;
+      name = doc.getElementById("hd").getElementsByTagName("h1")[0].textContent.trim();
     }
     catch(err) {
-      return ;
-    }
-    
-    if(!name) {
-      return ;
+      return null;
     }
     
     params.from = '1111';
-    params.name = name;
   }
-  else if ('www.518.com.tw' == content.document.location.hostname) {
-    try { // 這邊是處理職務介紹的頁面
-      var name = doc.getElementsByClassName("company-info")[0].getElementsByTagName("a")[0].textContent.trim();
+  else if ('www.518.com.tw' === hostname) {
+    try { // 這邊是處理公司介紹的頁面
+      name = doc.getElementById("company-title").getElementsByClassName("sTrong")[0].textContent.replace("所有工作機會»", "").trim().replace("認證", "");
     }
-    catch(err) { // 這邊是處理公司介紹的頁面
+    catch(err) { // 這邊是處理職務介紹的頁面
       try {
-        name = doc.getElementById("company-title").getElementsByTagName("strong")[1].textContent.trim();
+        name = doc.getElementsByClassName("company-info")[0].getElementsByTagName("a")[0].textContent.trim();
       }
       catch(err) {
-        return ;
+        return null;
       }
     }
     
-    if(!name) {
-      return ;
-    }
-
     params.from = '518';
-    params.name = name;
   } 
   else {
-    return;
+    return null;
   }
 
+  params.link = doc.location.href;
+  params.name = name;
+  
   return params;
 }
 
 function main() {
-  var doc = content.document;
-  var companyInfo = get_company_info();
+  var doc = content.document,
+      companyInfo = get_company_info();
   
   if(!companyInfo) { // 不是目標網站就什麼事也不做
     return;
   }
-
+  
   // 處理22K網站的資料
   // 給一個函式當做參數, 函式的參數(data)是所有22K的資料(格式請參考22k.js)
   // 當資料(data)取得成功時一一比對是否與這個頁面的公司名稱相同, 相同的話將所有相關的資料顯示出來
-  try{
   salaryDataMap(function(data) {
     data.forEach(function(item){
-      if(companyInfo.name.indexOf(item.companyName) >= 0) {
+      if(item.companyName.indexOf(companyInfo.name) >= 0 || companyInfo.name.indexOf(item.companyName) >= 0) {
         // 收集"特殊要求"
         appendAlertMsg("*" + item.companyName + ":曾被舉報低薪於揭露22K網站, 職稱:" + item.jobName + ", 薪資:" + item.salary + ", 特殊要求:" + item.note, item.screenShot);
       }
-    })
+    });
   });
-  }catch(err){alert(err)}
   
-  try{
   // 處理 jobhelper 網站上的資料
   jobHelperDataMap(function(data) {
+    var packageURL = data.url;
     data.forEach(function(item) {
-      if(companyInfo.name.indexOf(item[0]) >= 0) {
-        appendAlertMsg("*" + item[0] + ":違反" + item[2] + ", 日期:" + item[1], item[3]);
+      if(item[0].indexOf(companyInfo.name) >= 0 || companyInfo.name.indexOf(item[0]) >= 0) {
+        var url = packageURL + "#company-" + item[0] + "-" + item[1];
+        appendAlertMsg("*" + item[0] + ":違反" + item[2] + ", 日期:" + item[1], url);
       }
     });
   });
-  }catch(err){alert(err)}
   
   // 將違規資訊加入 myAlertDiv 裡頭
   function appendAlertMsg(msg, link) {
     if(msg && link) {
-      var div = doc.getElementById("myAlertDiv");
+      var div = doc.getElementById("myAlertDiv"), 
+          style = null,
+          elt = null;
 
       if(!div) {
+        var closeDiv = null;
+        
         div = document.createElement("div");
         div.id = "myAlertDiv";
-        var style = div.style;
+        
+        style = div.style;
         style.background = "#cc103f";
         style.bottom = "10px";
-        style.padding = "5px; text-align";
-        style.textAlign = "center";
         style.fontSize = "14.5px";
-        style.lineHeight = "1.5";
         style.position = "fixed";
         style.zIndex = "999";
         
-        var closeDiv = document.createElement("div");
-        closeDiv.innerHTML = "關閉此訊息 ";
+        closeDiv = document.createElement("div");
+        closeDiv.innerHTML = "關閉訊息[請務必注意'網頁上的公司名稱'與'警告訊息的公司名稱'是否相符]";
         closeDiv.style.border = "#0000FF 5px groove";
         closeDiv.style.color = "WHITE";
         closeDiv.style.cursor = "pointer";
-        closeDiv.addEventListener("click", function(e){e.target.parentNode.style.display="none"});
+        closeDiv.addEventListener("click", function(e){e.target.parentNode.style.display="none";});
         
         div.appendChild(closeDiv);
         doc.body.appendChild(div);
       }
       
-      var elt = document.createElement("div");
+      elt = document.createElement("p");
       elt.appendChild(document.createTextNode(msg));
       elt.style.color = "WHITE";
       elt.style.cursor = "pointer";
-      elt.addEventListener("click", function(e){window.open(link)}, false);
+      elt.addEventListener("click", function(e){window.open(link);}, false);
       
       div.appendChild(elt);
     }

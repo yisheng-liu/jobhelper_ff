@@ -12,7 +12,9 @@ function jobHelperDataMap(whenGet) {
   // 用localStorage儲存資料
   var storage = content.window.localStorage;
   var packageInfo = storage.getItem("helperData");
-  if(packageInfo) {packageInfo = JSON.parse(packageInfo)}
+  if(packageInfo) {
+    packageInfo = JSON.parse(packageInfo);
+  }
 
   // 檢查本地端是否有package_info, 有的話檢查下載資料的時間是否在一週以內
   // 如果上述檢查沒通過就重新下載package_info
@@ -23,9 +25,12 @@ function jobHelperDataMap(whenGet) {
     var pInfo = packageInfo.data;
     for(var i = 0; i < pInfo.length; i++) {
       var pkg = storage.getItem("helperData_" + pInfo[i].id);
-      if(pkg) {pkg = JSON.parse(pkg)}
+      if(pkg) {
+        pkg = JSON.parse(pkg);
+      }
       
       if(pkg) {
+        pkg.data.url = pInfo[i].url;
         whenGet(pkg.data);
       }
       else {
@@ -42,7 +47,7 @@ function jobHelperDataMap(whenGet) {
       if(xhr.readyState === 4 && xhr.status === 200) {
         callback(JSON.parse(xhr.responseText));
       }
-    }
+    };
     xhr.send();
     
     function callback(ret) {
@@ -67,7 +72,7 @@ function jobHelperDataMap(whenGet) {
         callback(JSON.parse(xhr.responseText));
         
       }
-    }
+    };
     xhr.send();
 
     function callback(ret) {
