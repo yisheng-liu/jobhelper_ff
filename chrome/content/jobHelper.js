@@ -6,7 +6,10 @@
  * 註記: 本專案的構想源自於"求職小幫手" http://jobhelper.g0v.ronny.tw/
          專案程式碼是從"http://robertnyman.com/2009/01/24/how-to-develop-a-firefox-extension/"裏頭的範例修改來的
  */
-// to get the company info if any
+
+/**
+ * Purpose: to get the company info if any
+ */
 function get_company_info() {
   var params = {},
       doc = content.document,
@@ -124,10 +127,13 @@ function main() {
     
     style = div.style;
     style.background = "#cc103f";
-    style.bottom = "10px";
+    style.bottom = "0px";
     style.fontSize = "14.5px";
     style.position = "fixed";
     style.zIndex = "999";
+    style.maxHeight = "30%";
+    style.maxWidth = "1000px";
+    style.overflow = "auto";
     
     closeDiv = document.createElement("div");
     closeDiv.setAttribute("id", "closeDiv");
@@ -136,6 +142,14 @@ function main() {
     closeDiv.style.color = "WHITE";
     closeDiv.style.cursor = "pointer";
     closeDiv.addEventListener("click", function(e){e.target.parentNode.style.display="none";});
+    div.appendChild(closeDiv);
+    
+    closeDiv = document.createElement("div");
+    closeDiv.innerHTML = "設定要查詢的資料";
+    closeDiv.style.border = "#0000FF 5px groove";
+    closeDiv.style.color = "WHITE";
+    closeDiv.style.cursor = "pointer";
+    closeDiv.addEventListener("click", function(e){window.open("http://jobhelper.g0v.ronny.tw/index/setpackage", "_blank");});
     
     div.appendChild(closeDiv);
     doc.body.appendChild(div);
@@ -152,19 +166,30 @@ function main() {
       }
     });
   });
-  
+
   // 處理 jobhelper 網站上的資料
-  jobHelperDataMap(function(data) {
-    var packageURL = data.url;
+  getJobHelperData(companyInfo.name, companyInfo.link, function(data) {
+    if (!data) {
+      return ;
+    }
+
+    var packageURL = data.url, url;
     data.forEach(function(item) {
       if(item[0].indexOf(companyInfo.name) >= 0 || companyInfo.name.indexOf(item[0]) >= 0) {
-        var url = packageURL + "#company-" + item[0] + "-" + item[1];
-        appendAlertMsg("*" + item[0] + ":違反" + item[2] + ", 日期:" + item[1], url);
+        if(data.func === "getDataByNameOnline") {
+          url = item.url + "#company-" + item[0] + "-" + item[1];
+        }
+        else {
+          url = packageURL + "#company-" + item[0] + "-" + item[1];
+        }
+        appendAlertMsg("*" + item[0] + ":" + item[2] + ", 日期:" + item[1], url);
       }
     });
   });
   
-  // 將違規資訊加入 myAlertDiv 裡頭 (這邊使用了 lazy function definition pattern)
+  /**
+   * Purpose: 將違規資訊加入 myAlertDiv 裡頭 (這邊使用了 lazy function definition pattern)
+   */ 
   function appendAlertMsg(msg, link) {
     firstCall();
     
