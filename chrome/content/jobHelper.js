@@ -63,7 +63,7 @@ function get_company_info() {
     
     params.from = 'ejob';
   }
-  else if ('www.yes123.com.tw' === hostname) {
+  else if ('www.yes123.com.tw' === hostname || 'yes123.com.tw' === hostname) {
     try {
       name = doc.getElementsByClassName("comp_name")[0].textContent.trim();
     }

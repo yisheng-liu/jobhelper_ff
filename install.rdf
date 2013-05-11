@@ -5,7 +5,7 @@
 	<Description about="urn:mozilla:install-manifest">
 		<em:id>y78427@gmail.com</em:id>
 		<em:name>Job Helper</em:name>
-		<em:version>1.4.0</em:version>
+		<em:version>1.4.1</em:version>
 		<em:type>2</em:type>
 		<em:creator>Yi-Sheng Liu</em:creator>
 		<em:description>Report the bad records of the company</em:description>
