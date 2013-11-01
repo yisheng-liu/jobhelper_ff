@@ -1,7 +1,5 @@
 ﻿<?xml version="1.0"?>
 <!DOCTYPE jobHelper SYSTEM "chrome://jobHelper/locale/translations.dtd">
 <overlay id="jobHelperOverlay" xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
-    <script src="22k.js" />
-    <script src="jobHelperDataMap.js" />
     <script src="jobHelper.js" />
 </overlay>
