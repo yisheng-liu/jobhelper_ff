@@ -1,21 +1,25 @@
 /**
  * 作者: 劉易昇
+ * 日期: 2013/04/12
  * 信箱: y78427@gmail.com
- * 目的: 顯示公司的違法或不利於求職者的資訊
+ * 目的: 顯示公司的違法或不利於求職者的資訊 (這是主程式)
  * 註記: 本專案的構想源自於"求職小幫手" http://jobhelper.g0v.ronny.tw/
          專案程式碼是從"http://robertnyman.com/2009/01/24/how-to-develop-a-firefox-extension/"裏頭的範例修改來的
  */
 
 var jobHelper = (function() {
+  return {run: main};
+
+
   function main() {
     var doc = content.document,
-        companyInfo = get_company_info();
+        companyInfo = getCompanyInfoFromWebPage();
     
     if(!companyInfo) { // 不是目標網站就什麼事也不做
       return;
     }
     
-    // 在頁面加上警告的資訊
+    // 在頁面加入顯示警告訊息的div
     (function() {
       var div = doc.getElementById("myAlertDiv"), 
           style = null,
@@ -57,7 +61,7 @@ var jobHelper = (function() {
     // 處理22K網站的資料
     // 給一個函式當做參數, 函式的參數(data)是所有22K的資料(格式請參考22k.js)
     // 當資料(data)取得成功時一一比對是否與這個頁面的公司名稱相同, 相同的話將所有相關的資料顯示出來
-    salaryDataMap(function(data) {
+    getDataFrom22K(function(data) {
       data.forEach(function(item){
         if(item.companyName.indexOf(companyInfo.name) >= 0 || companyInfo.name.indexOf(item.companyName) >= 0) {
           // 收集"特殊要求"
@@ -67,21 +71,23 @@ var jobHelper = (function() {
     });
 
     // 處理 jobhelper 網站上的資料
-    getJobHelperData(companyInfo.name, companyInfo.link, function(data) {
+    getDataFromJobHelper(companyInfo.name, companyInfo.link, function(data) {
       if (!data) {
         return ;
       }
 
-      var packageURL = data.url, url;
-      data.forEach(function(item) {
-        if(item[0].indexOf(companyInfo.name) >= 0 || companyInfo.name.indexOf(item[0]) >= 0) {
-          if(data.func === "getDataByNameOnline") {
-            url = item.url + "#company-" + item[0] + "-" + item[1];
+      var packageURL = data.url, 
+          url;
+          
+      data.forEach(function(datum) {
+        if(datum[0].indexOf(companyInfo.name) >= 0 || companyInfo.name.indexOf(datum[0]) >= 0) {
+          if(data.from === "online") {
+            url = datum.url + "#company-" + datum[0] + "-" + datum[1];
           }
           else {
-            url = packageURL + "#company-" + item[0] + "-" + item[1];
+            url = packageURL + "#company-" + datum[0] + "-" + datum[1];
           }
-          appendAlertMsg("*" + item[0] + ":" + item[2] + ", 日期:" + item[1], url);
+          appendAlertMsg("*" + datum[0] + ":" + datum[2] + ", 日期:" + datum[1], url);
         }
       });
     });
@@ -128,11 +134,8 @@ var jobHelper = (function() {
       }
     }
   }
-  
-  /**
-   * Purpose: to get the company info if any
-   */
-  function get_company_info() {
+
+  function getCompanyInfoFromWebPage() {
     var params = {},
         doc = content.document,
         name = null,
@@ -230,13 +233,74 @@ var jobHelper = (function() {
     return params;
   }
   
-  function getJobHelperData(companyName, companyURL, whenGet) {
+  function getDataFrom22K(whenGet) {
+    if(!whenGet) {
+      return ;
+    }
+
+    // 用localStorage儲存資料
+    var localStorage = content.window.localStorage,
+        data22K = localStorage.getItem("22kData") ? JSON.parse(localStorage.getItem("22kData")) : null;
+
+    // 檢查本地端是否有資料, 有的話檢查下載資料的時間是否在一週以內
+    // 如果上述檢查沒通過就重新下載資料, 通過的話就進行 whenGet
+    if(!data22K || !data22K.fetchTime || data22K.fetchTime + 604800*1000 < new Date().getTime()) {
+      updateData(whenGet);
+    }
+    else {
+      whenGet(data22K.data);
+    }
+    
+    // 從22k網站下載資料並且儲存起來, 如果成功就進行 whenGet
+    function updateData(whenGet) {
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", "http://www.22kopendata.org/api/list_data/20/", true);
+      xhr.onreadystatechange = function() {
+        if(xhr.readyState === 4 && xhr.status === 200) {
+          callback(xhr.responseText);
+        }
+      };
+      xhr.send();
+      
+      function callback(responseXML) {
+        var data22k = [],
+            xmlDoc = (new DOMParser()).parseFromString(responseXML, "text/xml"),
+            jobs = xmlDoc.getElementsByTagName("job");
+        
+        for(var idx = 0; idx < jobs.length; idx++) {
+          var job = jobs[idx];
+          var tmp = {};
+          tmp.companyName = job.getElementsByTagName("company_name")[0].textContent;
+          tmp.jobName = job.getElementsByTagName("job_name")[0].textContent;
+          tmp.salary = job.getElementsByTagName("salary")[0].textContent;
+          tmp.note = "";
+          // note 最多有兩個
+          var note1 = job.getElementsByTagName("note1")[0];
+          var note2 = job.getElementsByTagName("note2")[0];
+          if(note1) {
+            tmp.note += note1.textContent;
+          }
+          if(note2) {
+            tmp.note += note2.textContent;
+          }
+          tmp.screenShot = job.getElementsByTagName("job_url_screenshot")[0].textContent;
+          
+          data22k.push(tmp);
+        }
+        
+        localStorage.setItem("22kData", JSON.stringify({fetchTime: new Date().getTime(), data: data22k}));
+
+        whenGet(data22k);
+      }
+    }
+  }
+  
+  function getDataFromJobHelper(companyName, companyURL, whenGet) {
     if (!companyName || !companyURL || !whenGet) {
       return;
     }
 
     getDataByNameOnline(companyName, companyURL, whenGet, getLocalData);
-    
     
     /**
      * Purpose: 線上要資料
@@ -245,7 +309,7 @@ var jobHelper = (function() {
       var xhr = new XMLHttpRequest(), 
           url = 'http://jobhelper.g0v.ronny.tw/api/search?name=' + encodeURIComponent(companyName) + '&url=' + encodeURIComponent(companyURL) + '&packages=cookie';
       
-      xhr.open("GET", url);
+      xhr.open("GET", url, true);
       xhr.onreadystatechange = function() {
         if(xhr.readyState === 4 && xhr.status === 200) {
           callback(JSON.parse(xhr.responseText));
@@ -258,17 +322,17 @@ var jobHelper = (function() {
           fail(ret.message);
         }
         else {
-          var data = [], tmp;
-          data.func = "getDataByNameOnline";
+          var data = [], datum;
+          data.from = "online";
           ret.data.forEach(function(item){
-            tmp = [];
-            tmp[0] = item.name;
-            tmp[1] = item.date.replace(/-/g, "/");
-            tmp[2] = item.reason;
-            tmp[3] = item.link;
-            tmp[4] = item.snapshot;
-            tmp.url = getPackageURL(item.package_id);
-            data.push(tmp);
+            datum = [];
+            datum[0] = item.name;
+            datum[1] = item.date.replace(/-/g, "/");
+            datum[2] = item.reason;
+            datum[3] = item.link;
+            datum[4] = item.snapshot;
+            datum.url = getPackageURL(item.package_id);
+            data.push(datum);
           });
           success(data);
         }
@@ -360,80 +424,9 @@ var jobHelper = (function() {
       }
     }
   }
-  
-  function salaryDataMap(whenGet) {
-    if(!whenGet) {
-      return ;
-    }
-
-    // 用localStorage儲存資料
-    var storage = content.window.localStorage;
-    var ret = storage.getItem("22kData");
-    if(ret) {
-      ret = JSON.parse(ret);
-    }
-
-    // 檢查本地端是否有資料, 有的話檢查下載資料的時間是否在一週以內
-    // 如果上述檢查沒通過就重新下載資料, 通過的話就進行 whenGet
-    if(!ret || !ret.fetchTime || ret.fetchTime + 604800*1000 < new Date().getTime()) {
-      updateData(whenGet);
-    }
-    else {
-      whenGet(ret.data);
-    }
-    
-    // 從22k網站下載資料並且儲存起來, 如果成功就進行 whenGet
-    function updateData(whenGet) {
-      var xhr = new XMLHttpRequest();
-      xhr.open("GET", "http://www.22kopendata.org/api/list_data/20/");
-      xhr.onreadystatechange = function() {
-        if(xhr.readyState === 4 && xhr.status === 200) {
-          callback(xhr.responseText);
-        }
-      };
-      xhr.send();
-      
-      function callback(responseXML) {
-        var data = [];
-        var xmlDoc = (new DOMParser()).parseFromString(responseXML, "text/xml");
-        var jobs = xmlDoc.getElementsByTagName("job");
-        
-        for(var idx = 0; idx < jobs.length; idx++) {
-          var job = jobs[idx];
-          var tmp = {};
-          tmp.companyName = job.getElementsByTagName("company_name")[0].textContent;
-          tmp.jobName = job.getElementsByTagName("job_name")[0].textContent;
-          tmp.salary = job.getElementsByTagName("salary")[0].textContent;
-          tmp.note = "";
-          // note 最多有兩個
-          var note1 = job.getElementsByTagName("note1")[0];
-          var note2 = job.getElementsByTagName("note2")[0];
-          if(note1) {
-            tmp.note += note1.textContent;
-          }
-          if(note2) {
-            tmp.note += note2.textContent;
-          }
-          tmp.screenShot = job.getElementsByTagName("job_url_screenshot")[0].textContent;
-          
-          data.push(tmp);
-        }
-        
-        storage.setItem("22kData", JSON.stringify({fetchTime: new Date().getTime(), data: data}));
-
-        whenGet(data);
-      }
-    }
-  }
-  
-  return {
-    run: main;
-  };
 })();
 
-var testtest = {};
 window.addEventListener("load", function () {
-  window.jobHelper = testtest;
   gBrowser.addEventListener("DOMContentLoaded", function (event) {
     // 如果是iframe造成的這個事件就什麼事也不做(避免貼出重複的警告訊息)
     if(!event.target instanceof Ci.nsIDOMHTMLDocument || !(event.target != gBrowser.contentDocument)) {
